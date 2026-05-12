@@ -13,9 +13,9 @@
 # ---------- auth-signup ------------------
 # from auth import signup
 
-# id = "apple"
+# id = "banana"
 # pw = "1234"
-# nick = "애플"
+# nick = "바나나"
 
 # signup(id, pw, nick)
 
@@ -24,3 +24,14 @@
 
 # result = login("apple", "1234")
 # print(result)
+
+# ---------- auth-auto_login ------------------
+# from auth import auto_login
+
+# result = auto_login()
+# print(result)
+
+# ---------- activity-start_monitoring ------------------
+# from activity import start_monitoring
+
+# start_monitoring("apple")
