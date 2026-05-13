@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLay
 from PyQt6.QtGui import QPixmap, QMovie
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from activity import ActivitySignal
+from tray import TrayIcon
 import threading
 
 
@@ -78,6 +79,8 @@ class HUDWindow(QWidget):
         super().__init__()
         self.init_ui()
         self.start_activity()
+        self.tray = TrayIcon(self)
+        self.tray.setup()
 
     def init_ui(self):
         self.setWindowTitle("StudyPals")
