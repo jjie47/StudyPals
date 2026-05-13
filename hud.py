@@ -1,11 +1,15 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout
 from PyQt6.QtGui import QPixmap, QMovie
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from activity import ActivitySignal
+import threading
 
 
 # [동물 카드]
 class AnimalCard(QWidget):
+    request_status = pyqtSignal(str)
+
     def __init__(self, user_id, nickname, animal):
         super().__init__()
         self.user_id = user_id
@@ -42,16 +46,28 @@ class AnimalCard(QWidget):
             pixmap = QPixmap(f"{base_path}/close.png")
             pixmap = pixmap.scaled(img_w, img_h, Qt.AspectRatioMode.KeepAspectRatio)
             self.img_label.setPixmap(pixmap)
-        else:
-            # GIF 재생
-            gif_map = {
-                "opening": "open.gif",
-                "working": "ing.gif",
-                "closing": "close.gif"
-            }
-            movie = QMovie(f"{base_path}/{gif_map[status]}")
+
+        elif status == "opening":
+            movie = QMovie(f"{base_path}/open.gif")
+            movie.setScaledSize(QSize(img_w, img_h))
+            movie.finished.connect(lambda: self.request_status.emit("working"))
+            self.img_label.setMovie(movie)
+            self.movie = movie
+            movie.start()
+
+        elif status == "working":
+            movie = QMovie(f"{base_path}/ing.gif")
             movie.setScaledSize(QSize(img_w, img_h))
             self.img_label.setMovie(movie)
+            self.movie = movie
+            movie.start()
+
+        elif status == "closing":
+            movie = QMovie(f"{base_path}/close.gif")
+            movie.setScaledSize(QSize(img_w, img_h))
+            movie.finished.connect(lambda: self.request_status.emit("closed"))
+            self.img_label.setMovie(movie)
+            self.movie = movie
             movie.start()
 
 
@@ -61,6 +77,7 @@ class HUDWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.start_activity()
 
     def init_ui(self):
         self.setWindowTitle("StudyPals")
@@ -87,16 +104,29 @@ class HUDWindow(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # 내 카드 (임시 데이터로 테스트)
-        # my_card = AnimalCard(
-        #     user_id="apple",
-        #     nickname="애플",
-        #     animal="cat"
-        # )
-        # my_card.set_status("working")
-        # layout.addWidget(my_card)
+        self.my_card = AnimalCard(
+            user_id="apple",
+            nickname="애플",
+            animal="cat"
+        )
+        layout.addWidget(self.my_card)
 
         self.setLayout(layout)
         self.show()
+
+    
+    def start_activity(self):
+        # ActivitySignal 인스턴스 생성
+        self.monitor = ActivitySignal(user_id="apple")
+
+        # Signal 과 my_card.set_status 연결
+        # status_changed 시그널이 발생하면 self.my_card.set_status 함수를 실행하라
+        self.monitor.status_changed.connect(self.my_card.set_status)
+        # request_status 시그널이 발생하면 self.monitor.set_working 함수를 실행하라
+        self.my_card.request_status.connect(self.monitor.on_card_finished)
+
+        # 별도 스레드로 모니터링 시작
+        threading.Thread(target=self.monitor.start_monitoring, daemon=True).start()
 
 
     # ------ 드래그 이동 ------

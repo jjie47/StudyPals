@@ -1,96 +1,99 @@
-''' 키보드/마우스 움직임을 감지해서 Firebase에 상태를 업데이트 '''
-
-# 구현할 것
-#     1. 키보드/마우스 이벤트 감지
-#     2. 움직임 감지되면 -> status : "active"로 Firebase 업데이트
-#     3. 마지막 입력으로부터 10초 경과시 -> status : "inactive"로 Firebase 업데이트
-
 from pynput import keyboard, mouse
 from firebase import get_db
+from PyQt6.QtCore import QObject, pyqtSignal
 import threading
 
 
-db = get_db()
+# 사용자의 활동을 감지하고 상태를 관리
+class ActivitySignal(QObject):
+    db = get_db()
 
-# Firebase에 상태 업데이트
-def update_status(user_id, status):
-    db.collection("users").document(user_id).update({
-        "status": status
-    })
-
-
-current_status = "closed"   # 현재 상태 전역변수
-timer = None   # 타이머 전역변수
-
-# 움직임 감지시 호출되는 함수
-def on_activity(user_id):
-    global timer, current_status
-
-    # closed 상태면 -> opening 으로 변경
-    if current_status == "closed":
-        current_status = "opening"
-        update_status(user_id, "opening")
-
-        # open.gif 재생시간 만큼 후에 working으로 전환 (임시)
-        timer = threading.Timer(1, lambda: set_working(user_id))
-        timer.start()
-
-    # opening 상태면 -> 무시
-    elif current_status == "opening":
-        pass
-
-    # working 상태면 -> 타이머만 리셋
-    elif current_status == "working":
-        if timer:
-            timer.cancel()
-        timer = threading.Timer(10, set_closing, args=[user_id])
-        timer.start()
-
-    # closing 상태면 -> working으로 복귀
-    elif current_status == "closing":
-        current_status = "working"
-        update_status(user_id, "working")
+    # Firebase에 상태 업데이트
+    def update_status(self, status):
+        self.db.collection("users").document(self.user_id).update({
+            "status": status
+        })
 
 
-def set_working(user_id):
-            global current_status
-            current_status = "working"
-            update_status(user_id, "working")
-            
-def set_closing(user_id):
-    global current_status
-    current_status = "closing"      # current_status 도 변경!
-    update_status(user_id, "closing")
+    # 상태가 바뀔때 문자열을 담아서 Signal 발송
+    status_changed = pyqtSignal(str)
 
-    # close.gif 재생시간 만큼 후에 closed로 전환 (임시)
-    timer = threading.Timer(1, set_closed, args=[user_id])
-    timer.start()
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id
+        self.current_status = "closed"      # 인스턴스 변수
+        self.timer = None                   # 인스턴스 변수
 
-def set_closed(user_id):
-    global current_status
-    current_status = "closed"
-    update_status(user_id, "closed")
+    # 움직임 감지시 호출되는 함수
+    def on_activity(self):
+        # closed 상태면 -> opening 으로 변경
+        if self.current_status == "closed":
+            self.current_status = "opening"
+            self.update_status("opening")
+            self.status_changed.emit("opening")
+
+        # opening 상태면 -> 무시
+        elif self.current_status == "opening":
+            pass
+
+        # working 상태면 -> 타이머만 리셋
+        elif self.current_status == "working":
+            if self.timer:
+                self.timer.cancel()
+            self.timer = threading.Timer(10, self.set_closing)
+            self.timer.start()
+
+        # closing 상태면 -> working으로 복귀
+        elif self.current_status == "closing":
+            self.current_status = "working"
+            self.update_status("working")
+            self.status_changed.emit("working")
+
+    def on_card_finished(self, status):
+        if status == "working":
+            self.set_working()
+        elif status == "closed":
+            self.set_closed()
+
+
+    # working 으로 변경
+    def set_working(self):
+        self.current_status = "working"
+        self.update_status("working")
+        self.status_changed.emit("working")
+    
+    # closing 으로 변경
+    def set_closing(self):
+        self.current_status = "closing"
+        self.update_status("closing")
+        self.status_changed.emit("closing")
+
+    # closed 로 변경
+    def set_closed(self):
+        self.current_status = "closed"
+        self.update_status("closed")
+        self.status_changed.emit("closed")
 
 
 
-# 키보드/마우스 이벤트 감지 시작
-def start_monitoring(user_id):
-    update_status(user_id, "closed")
+    # 키보드/마우스 이벤트 감지 시작
+    def start_monitoring(self):
+        self.update_status("closed")
 
-    # 키보드 감지
-    listener_kb = keyboard.Listener(on_press=lambda key: on_activity(user_id))
-    # 마우스 감지
-    listener_ms = mouse.Listener(
-        on_move=lambda x, y: on_activity(user_id), 
-        on_click=lambda x, y, button, pressed: on_activity(user_id), 
-        on_scroll=lambda x, y, dx, dy: on_activity(user_id)
-    )
+        # 키보드 감지
+        self.listener_kb = keyboard.Listener(on_press=lambda key: self.on_activity())
+        # 마우스 감지
+        self.listener_ms = mouse.Listener(
+            on_move=lambda x, y: self.on_activity(), 
+            on_click=lambda x, y, button, pressed: self.on_activity(), 
+            on_scroll=lambda x, y, dx, dy: self.on_activity()
+        )
 
-    # 프로그램 종료 시 자동 종료되도록 daemon 설정
-    listener_kb.daemon = True
-    listener_ms.daemon = True
+        # 프로그램 종료 시 자동 종료되도록 daemon 설정
+        self.listener_kb.daemon = True
+        self.listener_ms.daemon = True
 
-    # 감지 시작
-    listener_kb.start()
-    listener_ms.start()
-    listener_kb.join()
+        # 감지 시작
+        self.listener_kb.start()
+        self.listener_ms.start()
+        self.listener_kb.join()
