@@ -35,3 +35,9 @@
 # from activity import start_monitoring
 
 # start_monitoring("apple")
+
+# ---------- group ------------------
+# from group import create_group, join_group, leave_group, get_my_groups
+
+# create_group("apple", "스터디그룹")
+# print(get_my_groups("apple"))
