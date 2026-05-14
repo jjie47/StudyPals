@@ -79,8 +79,9 @@ class AnimalCard(QWidget):
 
 # [메인 창]
 class HUDWindow(QWidget):
-    def __init__(self):
+    def __init__(self, user_data):
         super().__init__()
+        self.user_data = user_data
         self.init_ui()
         self.start_activity()
         self.tray = TrayIcon(self)
@@ -103,20 +104,20 @@ class HUDWindow(QWidget):
         screen = QApplication.primaryScreen().geometry()  # 모니터 크기
         self.resize(120, 150)
         self.move(
-            screen.width() - self.width() - 20,    # 오른쪽에서 20px
-            screen.height() - self.height() - 60   # 아래에서 60px
+            screen.width() - self.width() - 15,    # 오른쪽에서 20px
+            screen.height() - self.height() - 90   # 아래에서 60px
         )
 
         # 레이아웃 설정 (카드들을 가로로 나열)
         self.main_layout = QHBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 내 카드 (임시 데이터로 테스트)
         self.my_card = AnimalCard(
-            user_id="apple",
-            nickname="애플",
-            animal="cat"
+            user_id=self.user_data["user_id"],
+            nickname=self.user_data["nickname"],
+            animal=self.user_data["animal"]
         )
+
         self.main_layout.addWidget(self.my_card)
         self.setLayout(self.main_layout)
         self.show()
@@ -124,7 +125,7 @@ class HUDWindow(QWidget):
     
     def start_activity(self):
         # ActivitySignal 인스턴스 생성
-        self.monitor = ActivitySignal(user_id="apple")
+        self.monitor = ActivitySignal(user_id=self.user_data["user_id"])
 
         # Signal 과 my_card.set_status 연결
         # status_changed 시그널이 발생하면 self.my_card.set_status 함수를 실행하라
@@ -152,9 +153,3 @@ class HUDWindow(QWidget):
     # ------ 우클릭 ------
     def contextMenuEvent(self, event):
         self.settings_menu.show(event.globalPos())
-
-
-# 앱 실행
-app = QApplication(sys.argv)
-window = HUDWindow()
-sys.exit(app.exec())

@@ -4,9 +4,10 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 
 # [닉네임 변경]
 class NicknameDialog(QDialog):
-    def __init__(self, user_id):
+    def __init__(self, user_id, card):
         super().__init__()
         self.user_id = user_id
+        self.card = card
         self.init_ui()
 
     def init_ui(self):
@@ -38,5 +39,10 @@ class NicknameDialog(QDialog):
         db.collection("users").document(self.user_id).update({
             "nickname": nickname
         })
+
+        # 카드 닉네임 즉시 업데이트 추가!
+        self.card.nickname = nickname
+        self.card.nickname_label.setText(nickname)
+
         QMessageBox.information(self, "완료", "닉네임이 변경되었습니다.")
         self.close()

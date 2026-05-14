@@ -61,7 +61,7 @@ def verify_token(token: str):
 db = get_db()
 
 # [회원가입]
-def signup(user_id: str, user_pw: str, nickname: str):
+def signup(user_id: str, user_pw: str, nickname: str, animal: str):
     # ID 정보 가져오기
     db_user = db.collection("users").document(user_id).get()
 
@@ -78,7 +78,7 @@ def signup(user_id: str, user_pw: str, nickname: str):
             "user_id": user_id,
             "user_pw": hashed,
             "nickname": nickname,
-            "animal": "cat",
+            "animal": animal,
             "status": "closed"
         })
         print("회원가입 성공!")

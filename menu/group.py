@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QWidget, QInputDialog, QMessageBox
 from firebase import get_db
 from group import get_my_groups, join_group, leave_group, create_group
+from PyQt6.QtCore import Qt
 
 class GroupDialog(QDialog):
     def __init__(self, user_id):
@@ -39,6 +40,7 @@ class GroupDialog(QDialog):
         for group in groups:
             row = QHBoxLayout()
             label = QLabel(f"{group['group_name']} | {group['group_code']}")
+            label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             leave_btn = QPushButton("X")
             leave_btn.clicked.connect(lambda _, code=group['group_code']: self.leave_group(code))
             row.addWidget(label)

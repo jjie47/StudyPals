@@ -1,10 +1,12 @@
+from firebase import get_db 
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QComboBox, QPushButton, QLabel
 
 class AnimalDialog(QDialog):
-    def __init__(self, user_id, card):   # card 는 AnimalCard 인스턴스
+    def __init__(self, user_id, card, monitor):   # card 는 AnimalCard 인스턴스
         super().__init__()
         self.user_id = user_id
         self.card = card                 # HUD 즉시 반영용
+        self.monitor = monitor 
         self.init_ui()
 
     def init_ui(self):
@@ -32,7 +34,13 @@ class AnimalDialog(QDialog):
         animal = self.combo.currentText()   # 선택한 동물
         db = get_db()
         # Firestore 업데이트
-        ...
+        db.collection("users").document(self.user_id).update({
+            "animal": animal
+        })
+
+        # monitor 상태 리셋
+        self.monitor.set_closed()
+        
         # HUD 즉시 반영
         self.card.animal = animal
         self.card.set_status("closed")

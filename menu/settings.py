@@ -1,6 +1,8 @@
+import json
 from firebase import get_db
 from PyQt6.QtWidgets import QMenu, QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QMetaObject, Qt
 from google.cloud.firestore_v1.base_query import FieldFilter
 from menu.nickname import NicknameDialog
 from menu.animal import AnimalDialog
@@ -16,7 +18,7 @@ class SettingsMenu:
         menu = QMenu()
 
         # 메뉴 항목 추가
-        nickname_action = QAction("Nickname 변경")
+        nickname_action = QAction("닉네임 변경")
         animal_action = QAction("동물 변경")
         group_action = QAction("그룹 관리")
         logout_action = QAction("로그아웃")
@@ -39,14 +41,15 @@ class SettingsMenu:
         menu.exec(pos)
     
     def show_nickname_dialog(self):
-        dialog = NicknameDialog(user_id=self.window.monitor.user_id)
+        dialog = NicknameDialog(user_id=self.window.monitor.user_id, card=self.window.my_card)
         dialog.setParent(self.window, dialog.windowFlags())
         dialog.exec()
 
     def show_animal_dialog(self):
         dialog = AnimalDialog(
             user_id=self.window.monitor.user_id,
-            card=self.window.my_card        # AnimalCard 전달
+            card=self.window.my_card,     # AnimalCard 전달
+            monitor=self.window.monitor
         )
         dialog.setParent(self.window, dialog.windowFlags())
         dialog.exec()
@@ -59,7 +62,24 @@ class SettingsMenu:
         dialog.exec()
 
     def on_logout(self):
-        pass    # 나중에 구현
+        # config.json 토큰 삭제
+        with open("secrets/config.json", "w") as f:
+            json.dump({}, f)
+        
+        # 리스너 종료
+        self.window.monitor.listener_kb.stop()
+        self.window.monitor.listener_ms.stop()
+        
+        # 트레이 아이콘 제거
+        self.window.tray.icon.stop()
+        
+        # 로그인 창 열기
+        from login_window import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
+        
+        # HUD 창 닫기
+        QMetaObject.invokeMethod(self.window, "close", Qt.ConnectionType.QueuedConnection)
 
     def on_quit(self):
         self.window.tray.on_quit()
