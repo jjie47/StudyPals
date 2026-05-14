@@ -4,6 +4,7 @@ from PyQt6.QtGui import QPixmap, QMovie
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from activity import ActivitySignal
 from tray import TrayIcon
+from menu.settings import SettingsMenu
 import threading
 
 
@@ -20,18 +21,21 @@ class AnimalCard(QWidget):
 
     def init_ui(self):
         # 세로 레이아웃 (동물 이미지 위, 닉네임 아래)
-        layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
         
         # 이미지 표시할 라벨 생성
         self.img_label = QLabel()
+        # self.img_label.setFixedSize(100, 125)
 
         # 닉네임 표시할 라벨 생성
         self.nickname_label = QLabel(self.nickname)
         self.nickname_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.nickname_label.adjustSize()
+        self.nickname_label.setStyleSheet("color: white; background: red; border-radius: 10px; padding: 4px 10px;")
 
-        layout.addWidget(self.img_label)
-        layout.addWidget(self.nickname_label)
-        self.setLayout(layout)
+        self.main_layout.addWidget(self.img_label)
+        self.main_layout.addWidget(self.nickname_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.setLayout(self.main_layout)
 
         # 초기 이미지 설정 (closed 상태)
         self.set_status("closed")
@@ -81,6 +85,7 @@ class HUDWindow(QWidget):
         self.start_activity()
         self.tray = TrayIcon(self)
         self.tray.setup()
+        self.settings_menu = SettingsMenu(self)
 
     def init_ui(self):
         self.setWindowTitle("StudyPals")
@@ -103,8 +108,8 @@ class HUDWindow(QWidget):
         )
 
         # 레이아웃 설정 (카드들을 가로로 나열)
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout = QHBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         # 내 카드 (임시 데이터로 테스트)
         self.my_card = AnimalCard(
@@ -112,9 +117,8 @@ class HUDWindow(QWidget):
             nickname="애플",
             animal="cat"
         )
-        layout.addWidget(self.my_card)
-
-        self.setLayout(layout)
+        self.main_layout.addWidget(self.my_card)
+        self.setLayout(self.main_layout)
         self.show()
 
     
@@ -144,6 +148,10 @@ class HUDWindow(QWidget):
             diff = event.globalPosition().toPoint() - self.drag_pos
             self.move(self.pos() + diff)
             self.drag_pos = event.globalPosition().toPoint()
+
+    # ------ 우클릭 ------
+    def contextMenuEvent(self, event):
+        self.settings_menu.show(event.globalPos())
 
 
 # 앱 실행
