@@ -1,9 +1,8 @@
 import json
 from firebase import get_db
-from PyQt6.QtWidgets import QMenu, QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox
+from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import QMetaObject, Qt
-from google.cloud.firestore_v1.base_query import FieldFilter
 from menu.nickname import NicknameDialog
 from menu.animal import AnimalDialog
 from menu.group import GroupDialog
