@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout
 from PyQt6.QtGui import QPixmap, QMovie
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QObject
 from activity import ActivitySignal
 from tray import TrayIcon
 from menu.settings import SettingsMenu
@@ -79,6 +79,15 @@ class AnimalCard(QWidget):
             self.img_label.setMovie(movie)
             self.movie = movie
             movie.start()
+
+
+
+class FriendStatusUpdater(QObject):
+    status_changed = pyqtSignal(str)
+
+    def __init__(self, card):
+        super().__init__()
+        self.status_changed.connect(card.set_status)
 
 
 
@@ -185,25 +194,49 @@ class HUDWindow(QWidget):
 
             # 실시간 리스너 등록
             self.add_listener(friend_id, card)
-        
-        # 카드 추가 후 창 크기 자동 조절
-        card_count = len(friend_ids) + 1  # 친구 수 + 나
-        card_width = 80                   # 카드 하나 너비
-        self.resize(card_width * card_count, 100)
 
-        # 우측 하단 위치 재계산
+        # 창 크기 자동 조절
+        card_count = len(friend_ids) + 1
+        card_width = 80
+        new_width = card_width * card_count
+
+        print(f"friend_ids: {friend_ids}")
+        print(f"card_count: {card_count}")
+        print(f"layout count: {self.main_layout.count()}")  
+        self.resize(card_width * card_count, 100)
+        self.setMinimumSize(0, 0)       # 최소 크기 제한 해제
+        self.setMaximumSize(new_width, 200)  # 최대 크기 제한
+        print(f"resize 후 창 크기: {self.width()} x {self.height()}")
+
         screen = QApplication.primaryScreen().geometry()
         self.move(
             screen.width() - self.width() - 20,
             screen.height() - self.height() - 85
         )
 
+
+    def refresh_friend_cards(self):
+        # 기존 친구 카드 제거 (내 카드 제외)
+        while self.main_layout.count() > 1:
+            item = self.main_layout.takeAt(1)
+            if item.widget():
+                item.widget().setParent(None)   # deleteLater() 대신 즉시 삭제!
+
+        # 친구 카드 다시 불러오기
+        self.load_friend_cards()
+
+
     def add_listener(self, user_id, card):
+        updater = FriendStatusUpdater(card)
+        self.updaters = getattr(self, 'updaters', [])
+        self.updaters.append(updater)  # 가비지 컬렉션 방지
+
         def on_snapshot(doc_snapshot, changes, read_time):
             for doc in doc_snapshot:
                 status = doc.to_dict()["status"]
-                # 메인 스레드에서 카드 업데이트
-                card.set_status(status)
+                updater.status_changed.emit(status)
 
         db = get_db()
         db.collection("users").document(user_id).on_snapshot(on_snapshot)
+
+

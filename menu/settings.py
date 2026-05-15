@@ -55,7 +55,8 @@ class SettingsMenu:
 
     def show_group_dialog(self):
         dialog = GroupDialog(
-            user_id=self.window.monitor.user_id
+            user_id=self.window.monitor.user_id,
+            window=self.window
         )
         dialog.setParent(self.window, dialog.windowFlags())
         dialog.exec()

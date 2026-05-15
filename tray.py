@@ -1,3 +1,4 @@
+import os
 import threading
 from pystray import Icon, Menu, MenuItem
 from PyQt6.QtCore import QMetaObject, Qt
@@ -37,3 +38,4 @@ class TrayIcon:
         self.window.monitor.listener_ms.stop()
         self.icon.stop()
         QMetaObject.invokeMethod(self.window, "close", Qt.ConnectionType.QueuedConnection)
+        os._exit(0)

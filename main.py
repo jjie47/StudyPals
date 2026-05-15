@@ -12,7 +12,8 @@ def main():
         user_data = auto_login()
         # 성공시 HUD 실행
         window = HUDWindow(user_data)
-    except:
+    except Exception as e:
+        print(f"자동로그인 실패 : {e}")
         # 실패시 로그인 창 실행
         window = LoginWindow()
 

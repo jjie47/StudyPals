@@ -114,19 +114,29 @@ def login(user_id: str, user_pw: str) -> dict:
 
 # [자동로그인]
 def auto_login():
-    # config.json 파일 읽기
-    with open("secrets/config.json", "r") as f:
-        config = json.load(f)
-        token = config["token"]
+    try:
+        # config.json 파일 읽기
+        with open("secrets/config.json", "r") as f:
+            config = json.load(f)
+            token = config["token"]
 
-    user_id = verify_token(token)
+        if not token:
+            raise ValueError("토큰이 없습니다.")
+
+        user_id = verify_token(token)
+
+        if not user_id:
+            raise ValueError("유효하지 않은 토큰입니다.")
+        
+        # 유저 정보 가져오기
+        db_user = db.collection("users").document(user_id).get()
+        user_data = db_user.to_dict()   # 문서 내용을 딕셔너리로 변환
+
+        return {
+            "user_id": user_data["user_id"],
+            "nickname": user_data["nickname"],
+            "animal": user_data["animal"],
+        }
     
-    # 유저 정보 가져오기
-    db_user = db.collection("users").document(user_id).get()
-    user_data = db_user.to_dict()   # 문서 내용을 딕셔너리로 변환
-
-    return {
-        "user_id": user_data["user_id"],
-        "nickname": user_data["nickname"],
-        "animal": user_data["animal"],
-    }
+    except FileNotFoundError:
+        raise ValueError("config.json 파일이 없습니다.")
