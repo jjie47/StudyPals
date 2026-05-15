@@ -31,7 +31,7 @@ class AnimalCard(QWidget):
         self.nickname_label = QLabel(self.nickname)
         self.nickname_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.nickname_label.adjustSize()
-        self.nickname_label.setStyleSheet("color: white; background: red; border-radius: 10px; padding: 4px 10px;")
+        self.nickname_label.setStyleSheet("color: white;")
 
         self.main_layout.addWidget(self.img_label)
         self.main_layout.addWidget(self.nickname_label, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -43,8 +43,8 @@ class AnimalCard(QWidget):
     # 상태에 따라 이미지 전환하는 함수
     def set_status(self, status):
         base_path = f"assets/animals/{self.animal}"
-        img_w = 100
-        img_h = 125
+        img_w = 80
+        img_h = 100
 
         if status == "closed":
             # PNG 표시
@@ -102,10 +102,10 @@ class HUDWindow(QWidget):
 
         # 우측 하단 위치
         screen = QApplication.primaryScreen().geometry()  # 모니터 크기
-        self.resize(120, 150)
+        self.resize(100, 130)
         self.move(
-            screen.width() - self.width() - 15,    # 오른쪽에서 20px
-            screen.height() - self.height() - 90   # 아래에서 60px
+            screen.width() - self.width() - 10,    # 오른쪽에서 20px
+            screen.height() - self.height() - 65   # 아래에서 60px
         )
 
         # 레이아웃 설정 (카드들을 가로로 나열)
