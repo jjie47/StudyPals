@@ -5,6 +5,8 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from activity import ActivitySignal
 from tray import TrayIcon
 from menu.settings import SettingsMenu
+from group import get_my_groups
+from firebase import get_db
 import threading
 
 
@@ -35,6 +37,9 @@ class AnimalCard(QWidget):
 
         self.main_layout.addWidget(self.img_label)
         self.main_layout.addWidget(self.nickname_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)  # 여백 제거
+        self.main_layout.setSpacing(2)
+
         self.setLayout(self.main_layout)
 
         # 초기 이미지 설정 (closed 상태)
@@ -84,6 +89,7 @@ class HUDWindow(QWidget):
         self.user_data = user_data
         self.init_ui()
         self.start_activity()
+        self.load_friend_cards()
         self.tray = TrayIcon(self)
         self.tray.setup()
         self.settings_menu = SettingsMenu(self)
@@ -104,8 +110,8 @@ class HUDWindow(QWidget):
         screen = QApplication.primaryScreen().geometry()  # 모니터 크기
         self.resize(100, 130)
         self.move(
-            screen.width() - self.width() - 10,    # 오른쪽에서 20px
-            screen.height() - self.height() - 65   # 아래에서 60px
+            screen.width() - self.width() - 10,    # 오른쪽에서 10px
+            screen.height() - self.height() - 85   # 아래에서 85px
         )
 
         # 레이아웃 설정 (카드들을 가로로 나열)
@@ -153,3 +159,51 @@ class HUDWindow(QWidget):
     # ------ 우클릭 ------
     def contextMenuEvent(self, event):
         self.settings_menu.show(event.globalPos())
+
+
+    # ------ 그룹원 목록 가져오기 ------
+    def load_friend_cards(self):
+        db = get_db()
+        groups = get_my_groups(self.user_data["user_id"])
+
+        # 그룹원 user_id 목록 수집 (중복 제거)
+        friend_ids = set()
+        for group in groups:
+            for member_id in group["members"]:
+                if member_id != self.user_data["user_id"]:  # 나 제외
+                    friend_ids.add(member_id)
+
+        # 친구 카드 추가
+        for friend_id in friend_ids:
+            friend_data = db.collection("users").document(friend_id).get().to_dict()
+            card = AnimalCard(
+                user_id=friend_id,
+                nickname=friend_data["nickname"],
+                animal=friend_data["animal"]
+            )
+            self.main_layout.addWidget(card)
+
+            # 실시간 리스너 등록
+            self.add_listener(friend_id, card)
+        
+        # 카드 추가 후 창 크기 자동 조절
+        card_count = len(friend_ids) + 1  # 친구 수 + 나
+        card_width = 80                   # 카드 하나 너비
+        self.resize(card_width * card_count, 100)
+
+        # 우측 하단 위치 재계산
+        screen = QApplication.primaryScreen().geometry()
+        self.move(
+            screen.width() - self.width() - 20,
+            screen.height() - self.height() - 85
+        )
+
+    def add_listener(self, user_id, card):
+        def on_snapshot(doc_snapshot, changes, read_time):
+            for doc in doc_snapshot:
+                status = doc.to_dict()["status"]
+                # 메인 스레드에서 카드 업데이트
+                card.set_status(status)
+
+        db = get_db()
+        db.collection("users").document(user_id).on_snapshot(on_snapshot)

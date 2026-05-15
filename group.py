@@ -13,7 +13,11 @@ def get_my_groups(user_id):
         filter=FieldFilter("members", "array_contains", user_id)
     ).get()
 
-    return [{"group_code": g.id, "group_name": g.to_dict()["group_name"]} for g in groups]
+    return [{
+        "group_code": g.id, 
+        "group_name": g.to_dict()["group_name"],
+        "members": g.to_dict()["members"]
+    } for g in groups]
 
 
 # [그룹 랜덤코드 생성]

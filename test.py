@@ -41,3 +41,8 @@
 
 # create_group("apple", "스터디그룹")
 # print(get_my_groups("apple"))
+
+from group import get_my_groups
+
+result = get_my_groups("apple")
+print(result)
