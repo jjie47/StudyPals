@@ -12,6 +12,8 @@ import threading
 
 
 def _is_offline(friend_data):
+    if not friend_data:
+        return True
     if not friend_data.get("is_online", False):
         return True
     last_seen = friend_data.get("last_seen")
