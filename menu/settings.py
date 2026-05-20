@@ -25,8 +25,8 @@ class SettingsMenu:
 
         # 창 크기 서브메뉴
         size_menu = QMenu("창 크기")
-        size_normal = QAction("기본 (80x100)")
-        size_small = QAction("작게 (60x75)")
+        size_normal = QAction("기본")
+        size_small = QAction("작게")
         size_menu.addAction(size_normal)
         size_menu.addAction(size_small)
 

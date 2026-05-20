@@ -45,7 +45,7 @@ class AnimalCard(QWidget):
         self.nickname_label = QLabel(self.nickname)
         self.nickname_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.nickname_label.setFixedHeight(self.nickname_label.fontMetrics().height())
-        self.nickname_label.setStyleSheet("color: #fff;")
+        self.nickname_label.setStyleSheet("color: black;")
 
         self.main_layout.addWidget(self.img_label)
         self.main_layout.addWidget(self.nickname_label)
@@ -133,7 +133,7 @@ class HUDWindow(QWidget):
             Qt.WindowType.WindowStaysOnTopHint |   # 항상 최상단 유지
             Qt.WindowType.Tool   # 작업표시줄에 표시 안되는 툴창 형태
         ) 
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)   # 창 배경 투명 설정
+        self.setStyleSheet("background-color: white;")
 
         # 우측 하단 위치
         screen = QApplication.primaryScreen().geometry()  # 모니터 크기
