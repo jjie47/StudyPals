@@ -15,7 +15,7 @@ class AnimalDialog(QDialog):
 
         # 드롭박스
         self.combo = QComboBox()
-        self.combo.addItems(["cat", "dog", "rabbit"])  # 동물 목록
+        self.combo.addItems(["cat", "dog", "rabbit", "bear", "panda", "tiger"])  # 동물 목록
 
         # 버튼
         self.save_btn = QPushButton("저장")

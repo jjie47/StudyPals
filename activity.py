@@ -1,5 +1,6 @@
 from pynput import keyboard, mouse
 from firebase import get_db
+from firebase_admin import firestore as firestore_module
 from PyQt6.QtCore import QObject, pyqtSignal
 import threading
 
@@ -21,8 +22,9 @@ class ActivitySignal(QObject):
     def __init__(self, user_id):
         super().__init__()
         self.user_id = user_id
-        self.current_status = "closed"      # 인스턴스 변수
-        self.timer = None                   # 인스턴스 변수
+        self.current_status = "closed"
+        self.timer = None
+        self.heartbeat_timer = None
 
     # 움직임 감지시 호출되는 함수
     def on_activity(self):
@@ -76,9 +78,36 @@ class ActivitySignal(QObject):
 
 
 
+    def _heartbeat(self):
+        try:
+            self.db.collection("users").document(self.user_id).update({
+                "last_seen": firestore_module.SERVER_TIMESTAMP
+            })
+        except Exception:
+            pass
+        self.heartbeat_timer = threading.Timer(300, self._heartbeat)
+        self.heartbeat_timer.daemon = True
+        self.heartbeat_timer.start()
+
+    def set_offline(self):
+        if self.heartbeat_timer:
+            self.heartbeat_timer.cancel()
+        self.db.collection("users").document(self.user_id).update({
+            "status": "closed",
+            "is_online": False
+        })
+
     # 키보드/마우스 이벤트 감지 시작
     def start_monitoring(self):
-        self.update_status("closed")
+        self.db.collection("users").document(self.user_id).update({
+            "status": "closed",
+            "is_online": True,
+            "last_seen": firestore_module.SERVER_TIMESTAMP
+        })
+
+        self.heartbeat_timer = threading.Timer(300, self._heartbeat)
+        self.heartbeat_timer.daemon = True
+        self.heartbeat_timer.start()
 
         # 키보드 감지
         self.listener_kb = keyboard.Listener(on_press=lambda key: self.on_activity())

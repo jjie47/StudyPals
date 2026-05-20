@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timezone, timedelta
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout
 from PyQt6.QtGui import QPixmap, QMovie
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QObject
@@ -8,6 +9,15 @@ from menu.settings import SettingsMenu
 from group import get_my_groups
 from firebase import get_db
 import threading
+
+
+def _is_offline(friend_data):
+    if not friend_data.get("is_online", False):
+        return True
+    last_seen = friend_data.get("last_seen")
+    if last_seen is None:
+        return True
+    return (datetime.now(timezone.utc) - last_seen) > timedelta(minutes=10)
 
 
 # [동물 카드]
@@ -33,7 +43,7 @@ class AnimalCard(QWidget):
         self.nickname_label = QLabel(self.nickname)
         self.nickname_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.nickname_label.adjustSize()
-        self.nickname_label.setStyleSheet("color: white;")
+        self.nickname_label.setStyleSheet("color: #fff;")
 
         self.main_layout.addWidget(self.img_label)
         self.main_layout.addWidget(self.nickname_label, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -84,6 +94,7 @@ class AnimalCard(QWidget):
 
 class FriendStatusUpdater(QObject):
     status_changed = pyqtSignal(str)
+    go_offline = pyqtSignal()
 
     def __init__(self, card):
         super().__init__()
@@ -182,9 +193,13 @@ class HUDWindow(QWidget):
                 if member_id != self.user_data["user_id"]:  # 나 제외
                     friend_ids.add(member_id)
 
-        # 친구 카드 추가
+        # 온라인 친구 카드만 추가
+        online_ids = set()
         for friend_id in friend_ids:
             friend_data = db.collection("users").document(friend_id).get().to_dict()
+            if _is_offline(friend_data):
+                continue
+            online_ids.add(friend_id)
             card = AnimalCard(
                 user_id=friend_id,
                 nickname=friend_data["nickname"],
@@ -196,11 +211,11 @@ class HUDWindow(QWidget):
             self.add_listener(friend_id, card)
 
         # 창 크기 자동 조절
-        card_count = len(friend_ids) + 1
+        card_count = len(online_ids) + 1
         card_width = 80
         new_width = card_width * card_count
 
-        print(f"friend_ids: {friend_ids}")
+        print(f"online_ids: {online_ids}")
         print(f"card_count: {card_count}")
         print(f"layout count: {self.main_layout.count()}")  
         self.resize(card_width * card_count, 100)
@@ -226,15 +241,32 @@ class HUDWindow(QWidget):
         self.load_friend_cards()
 
 
+    def remove_friend_card(self, card):
+        self.main_layout.removeWidget(card)
+        card.setParent(None)
+        count = self.main_layout.count()
+        new_width = 80 * count
+        self.setMaximumSize(new_width, 200)
+        self.resize(new_width, self.height())
+        screen = QApplication.primaryScreen().geometry()
+        self.move(
+            screen.width() - self.width() - 20,
+            screen.height() - self.height() - 85
+        )
+
     def add_listener(self, user_id, card):
         updater = FriendStatusUpdater(card)
         self.updaters = getattr(self, 'updaters', [])
         self.updaters.append(updater)  # 가비지 컬렉션 방지
+        updater.go_offline.connect(lambda: self.remove_friend_card(card))
 
         def on_snapshot(doc_snapshot, changes, read_time):
             for doc in doc_snapshot:
-                status = doc.to_dict()["status"]
-                updater.status_changed.emit(status)
+                data = doc.to_dict()
+                if _is_offline(data):
+                    updater.go_offline.emit()
+                    return
+                updater.status_changed.emit(data.get("status", "closed"))
 
         db = get_db()
         db.collection("users").document(user_id).on_snapshot(on_snapshot)

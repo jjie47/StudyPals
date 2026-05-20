@@ -36,6 +36,7 @@ class TrayIcon:
     def on_quit(self):
         self.window.monitor.listener_kb.stop()
         self.window.monitor.listener_ms.stop()
+        self.window.monitor.set_offline()
         self.icon.stop()
         QMetaObject.invokeMethod(self.window, "close", Qt.ConnectionType.QueuedConnection)
         os._exit(0)

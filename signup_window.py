@@ -21,11 +21,12 @@ class SignupWindow(QWidget):
 
         # Nickname 입력창
         self.nickname_input = QLineEdit()
-        self.nickname_input.setPlaceholderText("닉네임 입력")
+        self.nickname_input.setPlaceholderText("닉네임 입력 (최대 4글자)")
+        self.nickname_input.setMaxLength(4) 
 
         # 동물 선택 드롭박스
         self.animal_combo = QComboBox()
-        self.animal_combo.addItems(["cat", "dog", "rabbit"])
+        self.animal_combo.addItems(["cat", "dog", "rabbit", "bear", "panda", "tiger"])
 
         # 버튼
         self.signup_btn = QPushButton("회원가입")

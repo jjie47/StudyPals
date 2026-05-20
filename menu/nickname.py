@@ -16,7 +16,8 @@ class NicknameDialog(QDialog):
 
         # 입력창
         self.input = QLineEdit()
-        self.input.setPlaceholderText("변경할 닉네임 입력")
+        self.input.setPlaceholderText("변경할 닉네임 입력 (최대 4글자)")
+        self.input.setMaxLength(4)
 
         # 버튼들
         self.save_btn = QPushButton("저장")
