@@ -24,11 +24,13 @@ def _is_offline(friend_data):
 class AnimalCard(QWidget):
     request_status = pyqtSignal(str)
 
-    def __init__(self, user_id, nickname, animal):
+    def __init__(self, user_id, nickname, animal, size=(80, 100)):
         super().__init__()
         self.user_id = user_id
         self.nickname = nickname
         self.animal = animal
+        self.card_size = size
+        self.current_status = "closed"
         self.init_ui()
 
     def init_ui(self):
@@ -42,13 +44,13 @@ class AnimalCard(QWidget):
         # 닉네임 표시할 라벨 생성
         self.nickname_label = QLabel(self.nickname)
         self.nickname_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.nickname_label.adjustSize()
+        self.nickname_label.setFixedHeight(self.nickname_label.fontMetrics().height())
         self.nickname_label.setStyleSheet("color: #fff;")
 
         self.main_layout.addWidget(self.img_label)
-        self.main_layout.addWidget(self.nickname_label, alignment=Qt.AlignmentFlag.AlignHCenter)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)  # 여백 제거
-        self.main_layout.setSpacing(2)
+        self.main_layout.addWidget(self.nickname_label)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
 
         self.setLayout(self.main_layout)
 
@@ -57,9 +59,11 @@ class AnimalCard(QWidget):
 
     # 상태에 따라 이미지 전환하는 함수
     def set_status(self, status):
+        self.current_status = status
         base_path = f"assets/animals/{self.animal}"
-        img_w = 80
-        img_h = 100
+        img_w, img_h = self.card_size
+        self.setFixedWidth(img_w)
+        self.img_label.setFixedSize(img_w, img_h)
 
         if status == "closed":
             # PNG 표시
@@ -111,6 +115,7 @@ class HUDWindow(QWidget):
     def __init__(self, user_data):
         super().__init__()
         self.user_data = user_data
+        self.card_size = (80, 100)
         self.init_ui()
         self.start_activity()
         self.load_friend_cards()
@@ -145,7 +150,8 @@ class HUDWindow(QWidget):
         self.my_card = AnimalCard(
             user_id=self.user_data["user_id"],
             nickname=self.user_data["nickname"],
-            animal=self.user_data["animal"]
+            animal=self.user_data["animal"],
+            size=self.card_size
         )
 
         self.main_layout.addWidget(self.my_card)
@@ -207,7 +213,8 @@ class HUDWindow(QWidget):
             card = AnimalCard(
                 user_id=friend_id,
                 nickname=friend_data["nickname"],
-                animal=friend_data["animal"]
+                animal=friend_data["animal"],
+                size=self.card_size
             )
             self.main_layout.addWidget(card)
 
@@ -216,16 +223,14 @@ class HUDWindow(QWidget):
 
         # 창 크기 자동 조절
         card_count = len(online_ids) + 1
-        card_width = 80
-        new_width = card_width * card_count
+        card_w, card_h = self.card_size
+        new_width = card_w * card_count
 
-        print(f"online_ids: {online_ids}")
-        print(f"card_count: {card_count}")
-        print(f"layout count: {self.main_layout.count()}")  
-        self.resize(card_width * card_count, 100)
-        self.setMinimumSize(0, 0)       # 최소 크기 제한 해제
-        self.setMaximumSize(new_width, 200)  # 최대 크기 제한
-        print(f"resize 후 창 크기: {self.width()} x {self.height()}")
+        nickname_h = self.my_card.nickname_label.fontMetrics().height()
+        new_height = card_h + nickname_h
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(new_width, new_height)
+        self.resize(new_width, new_height)
 
         screen = QApplication.primaryScreen().geometry()
         self.move(
@@ -249,9 +254,40 @@ class HUDWindow(QWidget):
         self.main_layout.removeWidget(card)
         card.setParent(None)
         count = self.main_layout.count()
-        new_width = 80 * count
-        self.setMaximumSize(new_width, 200)
+        card_w = self.card_size[0]
+        new_width = card_w * count
+        nickname_h = self.my_card.nickname_label.fontMetrics().height()
+        self.setMaximumSize(new_width, self.card_size[1] + nickname_h)
         self.resize(new_width, self.height())
+        screen = QApplication.primaryScreen().geometry()
+        self.move(
+            screen.width() - self.width() - 20,
+            screen.height() - self.height() - 85
+        )
+
+    def apply_card_size(self, size):
+        self.card_size = size
+        card_w, card_h = size
+
+        self.my_card.card_size = size
+        self.my_card.set_status(self.monitor.current_status)
+
+        for i in range(1, self.main_layout.count()):
+            item = self.main_layout.itemAt(i)
+            if item and item.widget():
+                card = item.widget()
+                card.card_size = size
+                card.set_status(card.current_status)
+
+        self.layout().activate()
+
+        count = self.main_layout.count()
+        new_width = card_w * count
+        nickname_h = self.my_card.nickname_label.fontMetrics().height()
+        new_height = card_h + nickname_h
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(new_width, new_height)
+        self.resize(new_width, new_height)
         screen = QApplication.primaryScreen().geometry()
         self.move(
             screen.width() - self.width() - 20,

@@ -23,9 +23,17 @@ class SettingsMenu:
         logout_action = QAction("로그아웃")
         quit_action = QAction("종료")
 
+        # 창 크기 서브메뉴
+        size_menu = QMenu("창 크기")
+        size_normal = QAction("기본 (80x100)")
+        size_small = QAction("작게 (60x75)")
+        size_menu.addAction(size_normal)
+        size_menu.addAction(size_small)
+
         menu.addAction(nickname_action)
         menu.addAction(animal_action)
         menu.addAction(group_action)
+        menu.addMenu(size_menu)
         menu.addSeparator()            # 구분선
         menu.addAction(logout_action)
         menu.addAction(quit_action)
@@ -34,6 +42,8 @@ class SettingsMenu:
         nickname_action.triggered.connect(self.show_nickname_dialog)
         animal_action.triggered.connect(self.show_animal_dialog)
         group_action.triggered.connect(self.show_group_dialog)
+        size_normal.triggered.connect(lambda: self.window.apply_card_size((80, 100)))
+        size_small.triggered.connect(lambda: self.window.apply_card_size((60, 75)))
         logout_action.triggered.connect(self.on_logout)
         quit_action.triggered.connect(self.on_quit)
 
