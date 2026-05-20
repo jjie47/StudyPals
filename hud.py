@@ -109,6 +109,14 @@ class FriendStatusUpdater(QObject):
         self.status_changed.connect(card.set_status)
 
 
+class GroupUpdater(QObject):
+    refresh = pyqtSignal()
+
+    def __init__(self, window):
+        super().__init__()
+        self.refresh.connect(window.refresh_friend_cards)
+
+
 
 # [메인 창]
 class HUDWindow(QWidget):
@@ -116,9 +124,11 @@ class HUDWindow(QWidget):
         super().__init__()
         self.user_data = user_data
         self.card_size = (80, 100)
+        self.group_updater = GroupUpdater(self)
         self.init_ui()
         self.start_activity()
         self.load_friend_cards()
+        self.add_group_listener()
         self.tray = TrayIcon(self)
         self.tray.setup()
         self.settings_menu = SettingsMenu(self)
@@ -244,10 +254,10 @@ class HUDWindow(QWidget):
         while self.main_layout.count() > 1:
             item = self.main_layout.takeAt(1)
             if item.widget():
-                item.widget().setParent(None)   # deleteLater() 대신 즉시 삭제!
+                item.widget().setParent(None)
 
-        # 친구 카드 다시 불러오기
         self.load_friend_cards()
+        self.add_group_listener()
 
 
     def remove_friend_card(self, card):
@@ -293,6 +303,65 @@ class HUDWindow(QWidget):
             screen.width() - self.width() - 20,
             screen.height() - self.height() - 85
         )
+
+    def add_group_listener(self):
+        db = get_db()
+        my_id = self.user_data["user_id"]
+
+        # 기존 리스너 해제
+        for stop_fn in getattr(self, 'group_watchers', []):
+            stop_fn()
+        self.group_watchers = []
+
+        groups = get_my_groups(my_id)
+
+        # 현재 HUD에 카드가 있는 친구 id
+        shown_ids = set()
+        for i in range(1, self.main_layout.count()):
+            item = self.main_layout.itemAt(i)
+            if item and item.widget():
+                shown_ids.add(item.widget().user_id)
+
+        # 모든 그룹 멤버 id (나 제외)
+        all_member_ids = set()
+        for group in groups:
+            for member_id in group["members"]:
+                if member_id != my_id:
+                    all_member_ids.add(member_id)
+
+        # 1. 그룹 문서 리스너 — 멤버 변경 감지
+        for group in groups:
+            group_code = group["group_code"]
+
+            def make_group_cb():
+                first = [True]
+                def cb(*_):
+                    if first[0]:
+                        first[0] = False
+                        return
+                    self.group_updater.refresh.emit()
+                return cb
+
+            watcher = db.collection("groups").document(group_code).on_snapshot(make_group_cb())
+            self.group_watchers.append(watcher)
+
+        # 2. 오프라인 친구 유저 문서 리스너 — 온라인 전환 감지
+        for friend_id in all_member_ids - shown_ids:
+
+            def make_user_cb():
+                first = [True]
+                def cb(doc_snapshot, *_):
+                    if first[0]:
+                        first[0] = False
+                        return
+                    for doc in doc_snapshot:
+                        if not _is_offline(doc.to_dict()):
+                            self.group_updater.refresh.emit()
+                            return
+                return cb
+
+            watcher = db.collection("users").document(friend_id).on_snapshot(make_user_cb())
+            self.group_watchers.append(watcher)
 
     def add_listener(self, user_id, card):
         updater = FriendStatusUpdater(card)
