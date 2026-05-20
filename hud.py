@@ -64,7 +64,11 @@ class AnimalCard(QWidget):
         if status == "closed":
             # PNG 표시
             pixmap = QPixmap(f"{base_path}/close.png")
-            pixmap = pixmap.scaled(img_w, img_h, Qt.AspectRatioMode.KeepAspectRatio)
+            pixmap = pixmap.scaled(
+                img_w, img_h, 
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
             self.img_label.setPixmap(pixmap)
 
         elif status == "opening":
